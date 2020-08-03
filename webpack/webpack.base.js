@@ -1,6 +1,7 @@
 const path = require('path')
 const HtmlWebPackPlugin = require('html-webpack-plugin')
 const servicenowConfig = require('./servicenow.config')
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const ROOT_PATH = path.join(__dirname, '../')
 
@@ -30,8 +31,8 @@ module.exports = {
   output: {
     publicPath: '/',
     path: path.join(ROOT_PATH, 'dist/'),
-    filename: '[name]-[hash]-js',
-    chunkFilename: CONFIG.JS_API_PATH + '[name]-[chunkhash]-js',
+    filename: '[name].js',
+    chunkFilename: CONFIG.JS_API_PATH + '[name].js',    
   },
 
   resolve: {
@@ -45,12 +46,26 @@ module.exports = {
       options: {
         noquotes: true,
       },
-      exclude: /node_modules/,
+      //exclude: /node_modules/,
     },
 
     css: {
       test: /\.(css)$/,
-      use: ['style-loader', 'css-loader'],
+      use: [
+        {
+            loader: MiniCssExtractPlugin.loader,
+            options: {
+                publicPath: (resourcePath, context) => {
+                    // publicPath is the relative path of the resource to the context
+                    // e.g. for ./css/admin/main.css the publicPath will be ../../
+                    // while for ./css/main.css the publicPath will be ../
+                    return path.relative(path.dirname(resourcePath), context) + '/';
+                },
+            },
+        },
+        'css-loader'
+      ]
+      //use: ['style-loader', 'css-loader'],
     },
   
     img: {
@@ -58,16 +73,24 @@ module.exports = {
       loader: 'url-loader',
       options: {
         limit: CONFIG.ASSET_SIZE_LIMIT,
-        name: CONFIG.IMG_API_PATH + '[name]-[hash:6]-[ext]',
+        name: CONFIG.IMG_API_PATH + '[name].[ext]',
       },
     },
     assets: {
-      test: /\.(woff|woff2|ttf|eot)$/,
+      test: /\.(woff|woff2|ttf|eot|txt)$/,
       loader: 'url-loader',
       options: {
         limit: CONFIG.ASSET_SIZE_LIMIT,
-        name: CONFIG.ASSETS_API_PATH + '[name]-[hash:6]-[ext]',
+        name: CONFIG.ASSETS_API_PATH + '[name].[ext]',
       },
+    },
+    scss: {
+      test: /.(sass|scss)$/,
+      use: [
+      { loader: 'style-loader' },
+      { loader: 'css-loader' },
+      { loader: 'sass-loader' },
+      ]
     },
 
     jsx(args) {
@@ -82,7 +105,8 @@ module.exports = {
         include: [path.join(ROOT_PATH, 'src')],
         test: /\.(ts|tsx|js|jsx)$/,
         exclude: /(node_modules)/,
-        use: [
+        enforce: 'pre',
+        use: [          
           {
             loader: 'babel-loader',
           },
@@ -92,12 +116,15 @@ module.exports = {
               emitWarning,
             },
           },
+          {
+            loader: 'source-map-loader',
+          },
         ],
       }
     },
   },
 
-  plugins: {
+  plugins: {    
     createIndexHtml() {
       return createHtmlPluginInstance({
         filename: 'index.html',
@@ -105,6 +132,12 @@ module.exports = {
         chunks: 'app',
         template: 'src/index.html',
       })
+    },
+    miniCssExtractPlugin() {
+      return new MiniCssExtractPlugin({
+        filename: '[name].css',
+        chunkFilename: '[id].css',
+     })
     },
   },
 }

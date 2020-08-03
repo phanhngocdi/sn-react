@@ -2,6 +2,9 @@ const webpack = require('webpack')
 const baseCfg = require('./webpack.base')
 var path = require('path')
 const servicenowConfig = require('./servicenow.config')
+const uglifyJsPlugin = require('uglifyjs-webpack-plugin')
+const CopyPlugin = require('copy-webpack-plugin');
+
 
 process.env.BABEL_ENV = 'development'
 process.env.NODE_ENV = 'development'
@@ -11,7 +14,7 @@ const cfg = {
     app: ['react-hot-loader/patch', './src/index.js'],
   },
 
-  output: baseCfg.output,
+  output: {...baseCfg.output, sourceMapFilename: "[name].js.map",},
 
   resolve: {
     ...baseCfg.resolve,
@@ -21,7 +24,8 @@ const cfg = {
     },
   },
 
-  devtool: false,
+  // devtool: false,  
+  devtool: 'eval-source-map',  
 
   mode: 'development',
 
@@ -64,13 +68,15 @@ const cfg = {
       baseCfg.rules.css,
       baseCfg.rules.img,
       baseCfg.rules.jsx({ withHot: true }),
+      // baseCfg.rules.scss,
     ],
   },
 
   plugins: [
-    new webpack.NamedModulesPlugin(),
+    new webpack.NamedModulesPlugin(),    
     new webpack.HotModuleReplacementPlugin(),
     baseCfg.plugins.createIndexHtml(),
+    baseCfg.plugins.miniCssExtractPlugin(),
     new webpack.DefinePlugin({
       'process.env.REACT_APP_USER': JSON.stringify(
         servicenowConfig.REACT_APP_USER
@@ -79,6 +85,14 @@ const cfg = {
         servicenowConfig.REACT_APP_PASSWORD
       ),
     }),
+    new uglifyJsPlugin({
+      sourceMap: true
+    }),
+    new CopyPlugin([
+      { from: 'public/resources', to: 'resources' },
+      { from: 'public/images', to: servicenowConfig.IMG_API_PATH },
+    ]),
+
   ],
 }
 
